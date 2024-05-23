@@ -4,7 +4,7 @@ SERVICE_ACCOUNT="test-service-account@test.gserviceaccount.com"
 SERVICE_CREDENTIALS="$(pwd)/service_account.json"
 INPUT_METADATA=""
 CONCURRENT_JOBS=10
-while getopts "a:s:m:c:" opt; do
+while getopts "a:s:m:o:c:" opt; do
     case $opt in
         a) SERVICE_ACCOUNT="$OPTARG"
         ;;
@@ -12,14 +12,16 @@ while getopts "a:s:m:c:" opt; do
         ;;
         m) INPUT_METADATA="$OPTARG"
         ;;
+        o) OUTPUT="$OPTARG"
+        ;;
         c) CONCURRENT_JOBS="$OPTARG"
         ;;
     esac
 done
 
 # Check if the variable is set and the file exists
-if [[ -z "$SERVICE_ACCOUNT" && -z "$SERVICE_CREDENTIALS" && -z "$INPUT_METADATA" ]]; then
-    echo "The -a -s and -m options are required."
+if [[ -z "$SERVICE_ACCOUNT" && -z "$SERVICE_CREDENTIALS" && -z "$INPUT_METADATA" && -z "$OUTPUT" ]]; then
+    echo "The -a -s -m and -o options are required."
     exit 1
 fi
 
@@ -30,6 +32,11 @@ fi
 
 if [[ ! -f "$SERVICE_CREDENTIALS" ]]; then
     echo "The specified SERVICE_CREDENTIAL file does not exist: $SERVICE_CREDENTIALS"
+    exit 1
+fi
+
+if ! touch "$OUTPUT" &>/dev/null; then
+    echo "The specified OUTPUT file is not writable: $OUTPUT"
     exit 1
 fi
 
@@ -52,7 +59,6 @@ DEDUPLICATE_METADATA="$JOBFOLDER/deduplicate_metadata.csv"
 
 header=$(head -n 1 $DEDUPLICATE_METADATA)
 
-OUTPUT_METADATA="MetadataOutput_Metabarcoding.csv"
 # split input file
 tail -n +2 $DEDUPLICATE_METADATA | split -l 1 - $JOBFOLDER/tmp/temp_
 for file in $JOBFOLDER/tmp/temp_*; do
@@ -62,13 +68,10 @@ for file in $JOBFOLDER/tmp/temp_*; do
     fi
 done
 
-# run metadata_extractor.py in parallel
+# run terradactyl.py in parallel
 echo "Processing $(basename $INPUT_METADATA) ..."
 parallel -j $CONCURRENT_JOBS "output_file=\$(mktemp); echo \$output_file; cat {}; retries=3; while ((retries > 0)); do python terradactyl.py --input {} --output \$output_file --account $SERVICE_ACCOUNT --credentials $SERVICE_CREDENTIALS && if [[ -s \$output_file ]]; then tail -n +2 \$output_file | cat >> $JOBFOLDER/output.txt; head -n 1 \"\$output_file\" | cat > $JOBFOLDER/headers.txt; break; else ((retries--)); fi; done; rm \$output_file" ::: $JOBFOLDER/tmp/temp_*.csv
 echo "Done."
 
 # combine headers and outfile
-cat "$JOBFOLDER/headers.txt" "$JOBFOLDER/output.txt" > $JOBFOLDER/$OUTPUT_METADATA
-
-#cleanup
-cleanup
+cat "$JOBFOLDER/headers.txt" "$JOBFOLDER/output.txt" > $OUTPUT

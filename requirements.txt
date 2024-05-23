@@ -1,2 +1,2 @@
 pandas
-ee
+earthengine-api
