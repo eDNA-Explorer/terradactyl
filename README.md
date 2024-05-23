@@ -21,3 +21,6 @@ Sample Date: The date associated with each sample. The default format is YYYY-MM
 Sample ID: A unique identifier for each sample.
 
 Spatial Uncertainty: The uncertainty in position, in meters, associated with each point. If no value is provided, or if the uncertainty provided is under 30 meters, then a default value of 30 meters will be assigned.
+
+### Output data format
+The output data file contains the original information in the require five columns from the input data file, along with the exctracted values associated with each sample. An example output file is located [here](https://github.com/eDNA-Explorer/terradactyl/blob/main/TerraDactyl_ExampleOutput.csv). A detailed description of all of the variables currently used in this extraction process are located [here](https://github.com/eDNA-Explorer/terradactyl/blob/main/TerraDactyl_Metadata.xlsx).
